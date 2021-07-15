@@ -111,18 +111,38 @@ public class DataImporterCSV extends StreamImporterAbstract {
                         Pair<DBPDataKind, String> dataType = DatabaseTransferUtils.getDataType(line[i]);
                         StreamDataImporterColumnInfo columnInfo = columnsInfo.get(i);
 
+                        DBPDataKind prevDataKind = columnInfo.getDataKind();
                         switch (dataType.getFirst()) {
                             case STRING:
                                 columnInfo.setDataKind(dataType.getFirst());
                                 columnInfo.setTypeName(dataType.getSecond());
                                 int length = line[i].length();
-                                if (length > columnInfo.getMaxLength()) {
+                                if (length > columnInfo.getMaxLength() || prevDataKind == DBPDataKind.NUMERIC) {
                                     columnInfo.setMaxLength(length);
                                 }
                                 break;
                             case NUMERIC:
+                                if (DatabaseTransferUtils.DATA_TYPE_INTEGER.equals(dataType)) {
+                                    columnInfo.setDataKind(dataType.getFirst());
+                                    long val = Long.parseLong(line[i]);
+                                    if (val == Long.MIN_VALUE) {
+                                        columnInfo.setMaxLength(Long.MAX_VALUE);
+                                    } else {
+                                        long abs = Math.abs(val);
+                                        if (abs > columnInfo.getMaxLength()) {
+                                            if (val == Integer.MIN_VALUE) {
+                                                columnInfo.setMaxLength(Integer.MAX_VALUE);
+                                            } else if (val == Short.MIN_VALUE) {
+                                                columnInfo.setMaxLength(Short.MAX_VALUE);
+                                            } else {
+                                                columnInfo.setMaxLength(abs);
+                                            }
+                                        }
+                                    }
+                                    break;
+                                }
                             case BOOLEAN:
-                                if (columnInfo.getDataKind() == DBPDataKind.UNKNOWN) {
+                                if (prevDataKind == DBPDataKind.UNKNOWN) {
                                     columnInfo.setDataKind(dataType.getFirst());
                                     columnInfo.setTypeName(dataType.getSecond());
                                 }
